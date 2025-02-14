@@ -6,10 +6,10 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 
-const Math = () => {
+const MathGames = () => {
   const navigate = useNavigate();
-  const [num1, setNum1] = useState(() => Math.floor(Math.random() * 10));
-  const [num2, setNum2] = useState(() => Math.floor(Math.random() * 10));
+  const [num1, setNum1] = useState(() => window.Math.floor(window.Math.random() * 10));
+  const [num2, setNum2] = useState(() => window.Math.floor(window.Math.random() * 10));
   const [userAnswer, setUserAnswer] = useState("");
   const [feedback, setFeedback] = useState("");
 
@@ -18,8 +18,8 @@ const Math = () => {
     setFeedback(correct ? "Correct! Great job! 🎉" : "Try again! You can do it! 💪");
     if (correct) {
       setTimeout(() => {
-        setNum1(Math.floor(Math.random() * 10));
-        setNum2(Math.floor(Math.random() * 10));
+        setNum1(window.Math.floor(window.Math.random() * 10));
+        setNum2(window.Math.floor(window.Math.random() * 10));
         setUserAnswer("");
         setFeedback("");
       }, 1500);
@@ -102,4 +102,4 @@ const Math = () => {
   );
 };
 
-export default Math;
+export default MathGames;
