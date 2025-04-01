@@ -1,15 +1,32 @@
-
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Eraser, Download } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Eraser, Download, Image, Palette } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useUser } from "@/context/UserContext";
+import { useToast } from "@/components/ui/use-toast";
+import PageLayout from "@/components/layouts/PageLayout";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+const colorPalette = [
+  "#000000", // Black
+  "#FF0000", // Red
+  "#0000FF", // Blue
+  "#008000", // Green
+  "#FFA500", // Orange
+  "#800080", // Purple
+  "#FFFF00", // Yellow
+  "#FFC0CB", // Pink
+];
 
 const Drawing = () => {
-  const navigate = useNavigate();
+  const { updateProgress } = useUser();
+  const { toast } = useToast();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [ctx, setCtx] = useState<CanvasRenderingContext2D | null>(null);
+  const [currentColor, setCurrentColor] = useState("#000000");
+  const [lineWidth, setLineWidth] = useState(3);
+  const [drawCount, setDrawCount] = useState(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -18,8 +35,8 @@ const Drawing = () => {
     const context = canvas.getContext('2d');
     if (!context) return;
 
-    context.strokeStyle = '#2D3436';
-    context.lineWidth = 3;
+    context.strokeStyle = currentColor;
+    context.lineWidth = lineWidth;
     context.lineCap = 'round';
     setCtx(context);
 
@@ -29,15 +46,22 @@ const Drawing = () => {
       if (!container) return;
       canvas.width = container.clientWidth - 40; // Padding
       canvas.height = 400;
-      context.strokeStyle = '#2D3436';
-      context.lineWidth = 3;
+      context.strokeStyle = currentColor;
+      context.lineWidth = lineWidth;
       context.lineCap = 'round';
     };
 
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
     return () => window.removeEventListener('resize', resizeCanvas);
-  }, []);
+  }, [currentColor, lineWidth]);
+
+  useEffect(() => {
+    if (ctx) {
+      ctx.strokeStyle = currentColor;
+      ctx.lineWidth = lineWidth;
+    }
+  }, [currentColor, lineWidth, ctx]);
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     setIsDrawing(true);
@@ -64,6 +88,19 @@ const Drawing = () => {
   };
 
   const stopDrawing = () => {
+    if (isDrawing) {
+      setDrawCount(prev => prev + 1);
+      
+      if (drawCount > 0 && drawCount % 5 === 0) {
+        updateProgress("drawing", 15);
+        toast({
+          title: "Art achievement!",
+          description: "Your creative skills are growing!",
+          variant: "default"
+        });
+      }
+    }
+    
     setIsDrawing(false);
     if (ctx) ctx.beginPath();
   };
@@ -75,55 +112,62 @@ const Drawing = () => {
 
   const downloadDrawing = () => {
     if (!canvasRef.current) return;
+    updateProgress("drawing", 5);
+    
     const link = document.createElement('a');
     link.download = 'my-drawing.png';
     link.href = canvasRef.current.toDataURL();
     link.click();
+    
+    toast({
+      title: "Drawing saved!",
+      description: "Your artwork has been downloaded.",
+    });
   };
 
   return (
-    <div className="min-h-screen bg-primary p-6">
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="max-w-4xl mx-auto"
-      >
-        <Button
-          variant="ghost"
-          onClick={() => navigate(-1)}
-          className="mb-6"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-
-        <div className="bg-white rounded-2xl p-8 shadow-lg">
-          <motion.h1
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-3xl font-bold text-primary-foreground mb-6"
-          >
-            Drawing & Art
-          </motion.h1>
+    <PageLayout title="Drawing & Art">
+      <div className="space-y-6">
+        <Tabs defaultValue="draw" className="w-full">
+          <TabsList className="mb-4">
+            <TabsTrigger value="draw">Free Drawing</TabsTrigger>
+            <TabsTrigger value="coloring">Coloring Pages</TabsTrigger>
+          </TabsList>
           
-          <div className="space-y-6">
-            <div className="flex gap-4">
-              <Button
-                onClick={clearCanvas}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <Eraser className="w-4 h-4" />
-                Clear
-              </Button>
-              <Button
-                onClick={downloadDrawing}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <Download className="w-4 h-4" />
-                Save
-              </Button>
+          <TabsContent value="draw" className="space-y-4">
+            <div className="flex flex-wrap gap-4">
+              <div className="flex gap-4">
+                <Button
+                  onClick={clearCanvas}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <Eraser className="w-4 h-4" />
+                  Clear
+                </Button>
+                <Button
+                  onClick={downloadDrawing}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Save
+                </Button>
+              </div>
+              
+              <div className="flex-1 flex items-center gap-2 justify-end">
+                <Palette className="w-4 h-4 text-gray-500" />
+                <div className="flex gap-1">
+                  {colorPalette.map((color) => (
+                    <button
+                      key={color}
+                      className={`w-6 h-6 rounded-full border ${currentColor === color ? 'ring-2 ring-primary' : 'ring-0'}`}
+                      style={{ backgroundColor: color }}
+                      onClick={() => setCurrentColor(color)}
+                    ></button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div className="bg-gray-50 rounded-lg p-5">
@@ -140,14 +184,46 @@ const Drawing = () => {
               />
             </div>
 
-            <div className="text-center text-gray-600">
-              <p>Express your creativity! Draw anything you like.</p>
-              <p className="text-sm mt-2">Coming soon: Coloring pages, brushes, and more!</p>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">Line Width:</span>
+              <input
+                type="range"
+                min="1"
+                max="20"
+                value={lineWidth}
+                onChange={(e) => setLineWidth(Number(e.target.value))}
+                className="flex-1"
+              />
+              <span className="text-sm font-medium">{lineWidth}px</span>
             </div>
-          </div>
+          </TabsContent>
+          
+          <TabsContent value="coloring" className="space-y-4">
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+              <div className="bg-gray-100 p-4 rounded-lg text-center">
+                <Image className="h-10 w-10 mx-auto mb-2 text-gray-500" />
+                <p className="text-gray-600">Coming soon!</p>
+              </div>
+              <div className="bg-gray-100 p-4 rounded-lg text-center">
+                <Image className="h-10 w-10 mx-auto mb-2 text-gray-500" />
+                <p className="text-gray-600">Coming soon!</p>
+              </div>
+              <div className="bg-gray-100 p-4 rounded-lg text-center">
+                <Image className="h-10 w-10 mx-auto mb-2 text-gray-500" />
+                <p className="text-gray-600">Coming soon!</p>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        <div className="text-center text-gray-600">
+          <p>Express your creativity! Draw anything you like.</p>
+          {drawCount > 0 && (
+            <p className="text-sm mt-2 text-primary">You've created {drawCount} drawings!</p>
+          )}
         </div>
-      </motion.div>
-    </div>
+      </div>
+    </PageLayout>
   );
 };
 
